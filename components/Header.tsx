@@ -10,14 +10,23 @@ const SparkleIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  credits: number;
+}
+
+const Header: React.FC<HeaderProps> = ({ credits }) => {
   return (
-    <header className="w-full py-4 px-8 border-b border-gray-700 bg-gray-800/30 backdrop-blur-sm sticky top-0 z-50">
-      <div className="flex items-center justify-center gap-3">
-          <SparkleIcon className="w-6 h-6 text-blue-400" />
-          <h1 className="text-xl font-bold tracking-tight text-gray-100">
-            Locked iN
-          </h1>
+    <header className="w-full py-4 px-8 border-b border-gray-700 bg-gray-800/30 backdrop-blur-sm sticky top-0 z-50 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <SparkleIcon className="w-6 h-6 text-blue-400" />
+        <h1 className="text-xl font-bold tracking-tight text-gray-100">
+          Locked iN
+        </h1>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-lg font-semibold text-gray-200">
+          Credits: {credits}
+        </span>
       </div>
     </header>
   );

@@ -7,9 +7,11 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import { generateEditedImage, generateFilteredImage, generateAdjustedImage } from './services/geminiService';
+import useCredits from './hooks/useCredits';
 import Header from './components/Header';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
+import Paywall from './components/Paywall';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
 import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, BullseyeIcon, SunIcon, PaletteIcon, CropIcon } from './components/icons';
@@ -35,11 +37,13 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
 type Tab = 'magic' | 'retouch' | 'adjust' | 'filters' | 'crop';
 
 const App: React.FC = () => {
+  const { credits, consumeCredit, addCredits, hasCredits } = useCredits();
   const [history, setHistory] = useState<File[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [prompt, setPrompt] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPaywall, setShowPaywall] = useState<boolean>(false);
   const [editHotspot, setEditHotspot] = useState<{ x: number, y: number } | null>(null);
   const [displayHotspot, setDisplayHotspot] = useState<{ x: number, y: number } | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('magic');
@@ -120,10 +124,16 @@ const App: React.FC = () => {
         return;
     }
 
+    if (!hasCredits) {
+        setShowPaywall(true);
+        return;
+    }
+
     setIsLoading(true);
     setError(null);
     
     try {
+        consumeCredit();
         const editedImageUrl = await generateEditedImage(currentImage, prompt, editHotspot);
         const newImageFile = dataURLtoFile(editedImageUrl, `edited-${Date.now()}.png`);
         addImageToHistory(newImageFile);
@@ -136,18 +146,24 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentImage, prompt, editHotspot, addImageToHistory]);
+  }, [currentImage, prompt, editHotspot, addImageToHistory, hasCredits, consumeCredit]);
   
   const handleApplyFilter = useCallback(async (filterPrompt: string) => {
     if (!currentImage) {
       setError('No image loaded to apply a filter to.');
       return;
     }
+
+    if (!hasCredits) {
+        setShowPaywall(true);
+        return;
+    }
     
     setIsLoading(true);
     setError(null);
     
     try {
+        consumeCredit();
         const filteredImageUrl = await generateFilteredImage(currentImage, filterPrompt);
         const newImageFile = dataURLtoFile(filteredImageUrl, `filtered-${Date.now()}.png`);
         addImageToHistory(newImageFile);
@@ -158,18 +174,24 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentImage, addImageToHistory]);
+  }, [currentImage, addImageToHistory, hasCredits, consumeCredit]);
   
   const handleApplyAdjustment = useCallback(async (adjustmentPrompt: string) => {
     if (!currentImage) {
       setError('No image loaded to apply an adjustment to.');
       return;
     }
+
+    if (!hasCredits) {
+        setShowPaywall(true);
+        return;
+    }
     
     setIsLoading(true);
     setError(null);
     
     try {
+        consumeCredit();
         const adjustedImageUrl = await generateAdjustedImage(currentImage, adjustmentPrompt);
         const newImageFile = dataURLtoFile(adjustedImageUrl, `adjusted-${Date.now()}.png`);
         addImageToHistory(newImageFile);
@@ -180,7 +202,7 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentImage, addImageToHistory]);
+  }, [currentImage, addImageToHistory, hasCredits, consumeCredit]);
 
   const handleMagicEdit = useCallback(async () => {
     if (!currentImage) {
@@ -193,10 +215,16 @@ const App: React.FC = () => {
         return;
     }
 
+    if (!hasCredits) {
+        setShowPaywall(true);
+        return;
+    }
+
     setIsLoading(true);
     setError(null);
     
     try {
+        consumeCredit();
         // We use generateAdjustedImage as it's best for general-purpose, global edits.
         const adjustedImageUrl = await generateAdjustedImage(currentImage, prompt);
         const newImageFile = dataURLtoFile(adjustedImageUrl, `adjusted-${Date.now()}.png`);
@@ -208,7 +236,7 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentImage, prompt, addImageToHistory]);
+  }, [currentImage, prompt, addImageToHistory, hasCredits, consumeCredit]);
 
 
   const handleApplyCrop = useCallback(() => {
@@ -567,10 +595,11 @@ const App: React.FC = () => {
   
   return (
     <div className="min-h-screen text-gray-100 flex flex-col">
-      <Header />
+      <Header credits={credits} />
       <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
         {renderContent()}
       </main>
+      {showPaywall && <Paywall onClose={() => setShowPaywall(false)} onAddCredits={() => addCredits(5)} />}
     </div>
   );
 };
